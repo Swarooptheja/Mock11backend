@@ -6,7 +6,7 @@ var jwt = require('jsonwebtoken');
 let cors=require("cors")
 const { Connection } = require("./config/connection");
 const { Signupmodel } = require("./Model/Signupmodel");
-const { Auth } = require("./authentification");
+// const { Auth } = require("./authentification");
 
 
 
@@ -19,10 +19,10 @@ app.use(cors({
 
 
 app.post("/signup",(req,res)=>{
-    let {email,password}=req.body;
+    let {email,password,name}=req.body;
     try{
-        bcrypt.hash(password, 15, async function(err, hash) {
-            let data=new Signupmodel({email,password:hash})
+        bcrypt.hash(password, 20, async function(err, hash) {
+            let data=new Signupmodel({email,password:hash,name})
             await data.save()
             res.send("Signup success")
             console.log(data)
@@ -41,7 +41,7 @@ app.post("/login",async(req,res)=>{
         try{
             bcrypt.compare(password, hash, function(err, result) {
                if(result){
-                var token = jwt.sign({UserId:data[0]._id}, 'secret',{expiresIn:'1h'});
+                var token = jwt.sign({UserId:data[0]._id}, 'secret',{expiresIn:'2h'});
                 res.send({message:"login Success",token:token})
                }
                else{
@@ -61,17 +61,58 @@ app.post("/login",async(req,res)=>{
 
 
 
-app.use(Auth)
+// app.use(Auth)
 
-app.get("/",(req,res)=>{
-    res.send('home page appear')
+app.get("/getprofile",(req,res)=>{
+    let token=req.headers.authorization?.split(" ")[1]
+    if(token){
+      jwt.verify(token, 'secret', async function(err, decoded) {
+        if(decoded){
+            console.log(decoded,"decoded")
+            let UserId=decoded.UserId
+            // req.body.UserId=UserId;
+            if(UserId){
+                let data=await Signupmodel.find({UserId})
+                res.send(data)
+            }
+
+            
+        }
+        else{
+            res.send('please login again')
+        }
+      });
+    }
+    else{
+        res.send('please login again')
+    }
 })
 
-app.listen(7000,async()=>{
+app.get("/calculate",(req,res)=>{
+    let {P,I,N}=req.body
+    // console.log(P,I,N)
+    I=I/100
+    console.log(I,"I")
+    let a=((1+I)**N)-1;
+    let b=a/I
+    let f=P*b
+
+    // console.log(f)
+    let totalInvestimentamout=P*N;
+    console.log(totalInvestimentamout,"mrp")
+    let totalgained=f-totalInvestimentamout
+    console.log(totalgained)
+
+    res.status(200).send((totalgained.toString()))
+
+
+})
+
+app.listen(8000,async()=>{
     try{
 
         await Connection
-        console.log('7000 port is running')
+        console.log('8000 port is running')
     }
     catch(err){
         console.log(err)
